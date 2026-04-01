@@ -1,0 +1,20 @@
+# Archivo generado automáticamente por Terraform al ejecutar `terraform apply`.
+# NO editar manualmente — los cambios se sobreescribirán en el próximo apply.
+# Este archivo es un ejemplo de cómo se verá el inventario generado.
+all:
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: /ruta/a/la/llave/SSH
+  children:
+    frontend:
+      hosts:
+        web-server:
+          ansible_host: <IP Pública Frontend>
+    backend:
+      hosts:
+        backend-server:
+          # El backend no tiene IP pública; se accede vía ProxyJump a través del frontend.
+          ansible_host: <IP Privada Backend>
+          ansible_ssh_common_args: >-
+            -o ProxyJump=ubuntu@<IP Pública Frontend>
+            -o StrictHostKeyChecking=no

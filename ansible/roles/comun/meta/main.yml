@@ -1,0 +1,35 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: tu nombre
+  description: descripcion del rol
+  company: tu empresa (opcional)
+
+  # Si el rastreador de issues de tu rol no está en GitHub, descomenta
+  # la siguiente línea y proporciona un valor
+  # issue_tracker_url: http://example.com/issue/tracker
+
+  # Elige un identificador de licencia válido en https://spdx.org - algunas sugerencias:
+  # - BSD-3-Clause (predeterminada)
+  # - MIT
+  # - GPL-2.0-or-later
+  # - GPL-3.0-only
+  # - Apache-2.0
+  # - CC-BY-4.0
+  license: MIT-0
+
+  min_ansible_version: 2.2
+
+  # Si este es un rol habilitado para contenedores, indica la versión mínima de Ansible Container.
+  # min_ansible_container_version:
+
+  galaxy_tags: []
+    # Lista las etiquetas del rol aquí, una por línea. Una etiqueta es una palabra clave que
+    # describe y categoriza el rol. Los usuarios encuentran roles buscando etiquetas.
+    # Elimina los '[]' de arriba si agregas etiquetas a esta lista.
+    #
+    # NOTA: Una etiqueta debe ser una sola palabra con caracteres alfanuméricos.
+    #       Máximo 20 etiquetas por rol.
+
+dependencies: []
+  # Lista las dependencias del rol aquí, una por línea. Elimina los '[]' de arriba
+  # si agregas dependencias a esta lista.

@@ -1,0 +1,25 @@
+document.addEventListener('DOMContentLoaded', () => {
+  const puntoEstado = document.getElementById('punto-estado');
+  const textoEstado = document.getElementById('estado-backend');
+
+  // Las rutas /api/* son relativas al mismo host (el frontend).
+  // El navegador las envía a nginx, que las redirige internamente al backend Flask.
+  // El navegador nunca habla directamente con el backend ni necesita conocer su IP privada.
+  fetch('/api/health')
+    .then(res => res.json())
+    .then(() => {
+      puntoEstado.classList.add('ok');
+      textoEstado.textContent = 'Backend en línea';
+    })
+    .catch(() => {
+      puntoEstado.classList.add('error');
+      textoEstado.textContent = 'Backend sin conexión';
+    });
+
+  document.getElementById('btn-saludo').addEventListener('click', () => {
+    fetch('/api/hello')
+      .then(res => res.json())
+      .then(data => { document.getElementById('resultado').textContent = data.message; })
+      .catch(() => { document.getElementById('resultado').textContent = 'Error al conectar con el backend.'; });
+  });
+});

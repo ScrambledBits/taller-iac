@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: "iniciar {{ nombre_servicio }}"
+  systemd:
+    name: "{{ nombre_servicio }}"
+    state: started
+    enabled: yes
+    daemon_reload: yes

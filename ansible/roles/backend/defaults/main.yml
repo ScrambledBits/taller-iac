@@ -1,0 +1,5 @@
+#SPDX-License-Identifier: MIT-0
+---
+directorio_app:  /opt/webstack-app
+archivo_app:     app.py
+nombre_servicio: flask-app

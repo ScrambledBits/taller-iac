@@ -1,0 +1,17 @@
+[Unit]
+Description=App de ejemplo para el taller de IaC de Bootcamperu
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/webstack-app/
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/usr/bin/python3 /opt/webstack-app/app.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

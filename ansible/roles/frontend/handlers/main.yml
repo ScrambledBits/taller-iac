@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+---
+# Handlers del rol frontend
+- name: reiniciar nginx
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes

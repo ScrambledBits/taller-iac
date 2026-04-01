@@ -1,0 +1,10 @@
+#SPDX-License-Identifier: MIT-0
+---
+# Tareas del rol comun: actualización del sistema operativo
+- name: Actualizar sistema
+  ansible.builtin.apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+    autoclean: true
+    autoremove: true

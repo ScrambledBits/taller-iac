@@ -1,0 +1,22 @@
+server {
+    listen 80;
+    server_name _;
+
+    # Sirve archivos estáticos desde el webroot
+    location / {
+        root  /var/www/bootcamperu;
+        index index.html;
+        try_files $uri $uri/ =404;
+    }
+
+    # Reverse proxy hacia el backend Flask.
+    # Sin barra al final de proxy_pass: nginx reenvía la URL completa incluyendo el prefijo /api/,
+    # de modo que Flask recibe la ruta tal como la declaró: /api/health, /api/hello, etc.
+    # Con barra final el prefijo se descartaría y Flask no encontraría las rutas.
+    location /api/ {
+        proxy_pass         http://{{ app_private_ip }}:5000;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    }
+}

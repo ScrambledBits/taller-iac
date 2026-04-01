@@ -1,0 +1,24 @@
+#SPDX-License-Identifier: MIT-0
+---
+# Playbook principal. Define dos plays independientes: uno para el grupo 'frontend'
+# y otro para 'backend'. Los grupos y sus hosts están definidos en el inventario
+# generado por Terraform (inventario_terraform.yaml).
+#
+# En cada play, el rol 'comun' se ejecuta primero (actualización del SO) antes del
+# rol específico. El orden de la lista importa: Ansible los ejecuta de arriba a abajo.
+#
+# 'become: true' indica que las tareas se ejecutan con privilegios de superusuario (sudo).
+
+- name: Frontend (Play)
+  hosts: frontend
+  become: true
+  roles:
+    - comun
+    - frontend
+
+- name: Backend (Play)
+  hosts: backend
+  become: true
+  roles:
+    - comun
+    - backend

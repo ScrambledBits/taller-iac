@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Taller Bootcamperu</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tarjeta {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      color: #1e293b;
+      margin-bottom: 0.25rem;
+    }
+
+    .servidor {
+      color: #64748b;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+
+    .servidor span {
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .estado-fila {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .punto {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #94a3b8;
+      flex-shrink: 0;
+    }
+
+    .punto.ok    { background: #22c55e; }
+    .punto.error { background: #ef4444; }
+
+    .estado-texto { font-size: 0.9rem; color: #64748b; }
+
+    button {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #2563eb; }
+
+    #resultado {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 8px;
+      color: #1e293b;
+      font-size: 1rem;
+      min-height: 48px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="tarjeta">
+    <h1>Taller Bootcamperu</h1>
+    <p class="servidor">Servidor: <span>{{ inventory_hostname }}</span></p>
+
+    <div class="estado-fila">
+      <div class="punto" id="punto-estado"></div>
+      <span class="estado-texto" id="estado-backend">Verificando backend...</span>
+    </div>
+
+    <button id="btn-saludo">Obtener Saludo</button>
+    <div id="resultado"></div>
+  </div>
+  <script src="api.js"></script>
+</body>
+</html>
