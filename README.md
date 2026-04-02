@@ -411,7 +411,7 @@ aws sts get-caller-identity
 ### 1. Inicializar Terraform
 
 ```bash
-cd taller/terraform
+cd terraform
 terraform init
 ```
 

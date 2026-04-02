@@ -1,25 +1,174 @@
+// api.js — WebStack BootcampPeru IaC demo
+// Las rutas /api/* son relativas al mismo host (el frontend).
+// El navegador las envía a nginx, que las redirige internamente al backend Flask.
+// El navegador nunca habla directamente con el backend ni necesita conocer su IP privada.
+'use strict';
+
+const POLL_MS = 5000;
+let reqCount  = 0;
+let pollTimer = null;
+let cdTimer   = null;
+let cdSecs    = POLL_MS / 1000;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function nowStr() {
+  return new Date().toLocaleTimeString('es-PE', { hour12: false });
+}
+
+function addLog(method, url, ok) {
+  const container = document.getElementById('log-entries');
+  const empty = container.querySelector('.log-empty');
+  if (empty) empty.remove();
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML =
+    `<span class="log-time">${nowStr()}</span>` +
+    `<span class="log-method">${method}</span>` +
+    `<span class="${ok ? 'log-ok' : 'log-err'}">${ok ? '200 OK' : 'ERROR'}</span>` +
+    `<span class="log-url">${url}</span>`;
+  container.prepend(entry);
+
+  reqCount++;
+  const counter = document.getElementById('req-count');
+  if (counter) counter.textContent = `${reqCount} petición${reqCount !== 1 ? 'es' : ''}`;
+
+  const all = container.querySelectorAll('.log-entry');
+  if (all.length > 20) all[all.length - 1].remove();
+}
+
+// ── Health polling ────────────────────────────────────────────────────────────
+
+async function checkHealth() {
+  const dot        = document.getElementById('s-dot');
+  const sText      = document.getElementById('s-text');
+  const latBadge   = document.getElementById('latency-badge');
+  const backNode   = document.getElementById('backend-node');
+  const backHost   = document.getElementById('backend-host');
+
+  const t0 = performance.now();
+  try {
+    const res     = await fetch('/api/health');
+    const rtt     = Math.round(performance.now() - t0);
+    const data    = await res.json();
+
+    dot.className = 's-dot ok';
+    sText.innerHTML = '<span style="color:var(--green)">ONLINE</span>';
+
+    latBadge.textContent = `RTT ${rtt} ms`;
+    latBadge.style.color = rtt < 150 ? 'var(--green)' : 'var(--amber)';
+
+    backNode.style.borderColor = 'var(--green)';
+    backNode.style.boxShadow   = 'var(--glow-green)';
+    backHost.textContent = data.host || '—';
+    backHost.style.color = 'var(--green)';
+
+    const hdStatus   = document.getElementById('hd-status');
+    const hdHost     = document.getElementById('hd-host');
+    const hdDeployed = document.getElementById('hd-deployed');
+    const hdTs       = document.getElementById('hd-ts');
+
+    hdStatus.textContent   = data.status || '—';
+    hdStatus.className     = 'dv ok';
+    hdHost.textContent     = data.host   || '—';
+    hdDeployed.textContent = data.deployed_by || '—';
+    hdTs.textContent       = data.timestamp
+      ? new Date(data.timestamp).toLocaleString('es-PE')
+      : '—';
+
+    addLog('GET', '/api/health', true);
+  } catch {
+    dot.className = 's-dot error';
+    sText.innerHTML = '<span style="color:var(--red)">OFFLINE</span>';
+    latBadge.textContent = 'ERROR';
+    latBadge.style.color = 'var(--red)';
+
+    backNode.style.borderColor = 'var(--red)';
+    backNode.style.boxShadow   = 'var(--glow-red)';
+    backHost.textContent       = 'no disponible';
+    backHost.style.color       = 'var(--red)';
+
+    const hdStatus = document.getElementById('hd-status');
+    hdStatus.textContent = 'error';
+    hdStatus.className   = 'dv err';
+
+    addLog('GET', '/api/health', false);
+  }
+}
+
+function startCountdown() {
+  if (cdTimer) clearInterval(cdTimer);
+  cdSecs = POLL_MS / 1000;
+  const el = document.getElementById('next-check');
+  const tick = () => {
+    if (el) el.textContent = `próximo check: ${cdSecs}s`;
+    if (cdSecs > 0) cdSecs--;
+  };
+  tick();
+  cdTimer = setInterval(tick, 1000);
+}
+
+function schedulePoll() {
+  checkHealth();
+  startCountdown();
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    checkHealth();
+    startCountdown();
+  }, POLL_MS);
+}
+
+// ── Hello ─────────────────────────────────────────────────────────────────────
+
+async function fetchHello() {
+  const btn      = document.getElementById('hello-btn');
+  const btnLabel = document.getElementById('hello-btn-label');
+  const box      = document.getElementById('resp-box');
+
+  btn.disabled       = true;
+  btnLabel.innerHTML = '&#9203; ENVIANDO<span class="ldots"></span>';
+  box.className      = 'response-box';
+  box.innerHTML      = '<span class="placeholder">// esperando respuesta del backend</span>';
+
+  const t0 = performance.now();
+  try {
+    const res     = await fetch('/api/hello');
+    const rtt     = Math.round(performance.now() - t0);
+    const data    = await res.json();
+
+    box.className = 'response-box flash';
+    box.innerHTML =
+      `<div class="resp-grid">` +
+        `<span>mensaje</span>  <span>${data.message || '—'}</span>` +
+        `<span>servidor</span> <span>${data.server  || '—'}</span>` +
+        `<span>latencia</span> <span>${rtt} ms</span>` +
+        `<span>hora</span>     <span>${nowStr()}</span>` +
+      `</div>`;
+
+    addLog('GET', '/api/hello', true);
+  } catch (err) {
+    box.innerHTML = `<span style="color:var(--red)">&#10007; Error: ${err.message}</span>`;
+    addLog('GET', '/api/hello', false);
+  } finally {
+    btn.disabled       = false;
+    btnLabel.innerHTML = '&#9654; ENVIAR PETICIÓN';
+  }
+}
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+
+function startClock() {
+  const el   = document.getElementById('clock');
+  const tick = () => { if (el) el.textContent = nowStr(); };
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', () => {
-  const puntoEstado = document.getElementById('punto-estado');
-  const textoEstado = document.getElementById('estado-backend');
-
-  // Las rutas /api/* son relativas al mismo host (el frontend).
-  // El navegador las envía a nginx, que las redirige internamente al backend Flask.
-  // El navegador nunca habla directamente con el backend ni necesita conocer su IP privada.
-  fetch('/api/health')
-    .then(res => res.json())
-    .then(() => {
-      puntoEstado.classList.add('ok');
-      textoEstado.textContent = 'Backend en línea';
-    })
-    .catch(() => {
-      puntoEstado.classList.add('error');
-      textoEstado.textContent = 'Backend sin conexión';
-    });
-
-  document.getElementById('btn-saludo').addEventListener('click', () => {
-    fetch('/api/hello')
-      .then(res => res.json())
-      .then(data => { document.getElementById('resultado').textContent = data.message; })
-      .catch(() => { document.getElementById('resultado').textContent = 'Error al conectar con el backend.'; });
-  });
+  startClock();
+  schedulePoll();
+  document.getElementById('hello-btn').addEventListener('click', fetchHello);
 });
