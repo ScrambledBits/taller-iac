@@ -1,17 +1,37 @@
+# Archivo de unidad systemd generado por Ansible desde la plantilla flask-app.service.j2.
+# systemd lo leerá desde /etc/systemd/system/{{ nombre_servicio }}.service.
+# Para consultar el estado del servicio: systemctl status {{ nombre_servicio }}
+# Para ver los logs en tiempo real:       journalctl -u {{ nombre_servicio }} -f
+
 [Unit]
-Description=App de ejemplo para el taller de IaC de Bootcamperu
+# Texto descriptivo visible en 'systemctl status' y en los logs del sistema.
+Description=Aplicación Flask del taller IaC — {{ nombre_servicio }}
+# After garantiza que systemd no intente arrancar el servicio antes de que la red
+# esté lista. Es importante porque Flask escucha en 0.0.0.0:5000 (todas las interfaces).
 After=network.target
 
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/opt/webstack-app/
+# WorkingDirectory es el directorio de trabajo del proceso. Las rutas relativas dentro
+# de la app se resolverán desde aquí.
+WorkingDirectory={{ directorio_app }}
+# PYTHONUNBUFFERED=1 desactiva el buffer de salida de Python. Sin esto, los print()
+# y los logs de Flask podrían no aparecer en journald hasta que el buffer se llene,
+# lo que dificulta depurar problemas en tiempo real.
 Environment="PYTHONUNBUFFERED=1"
-ExecStart=/usr/bin/python3 /opt/webstack-app/app.py
+ExecStart=/usr/bin/python3 {{ directorio_app }}/{{ archivo_app }}
+# Restart=always hace que systemd reinicie el proceso si termina por cualquier razón:
+# excepción no capturada, señal kill, etc.
+# RestartSec=5 espera 5 segundos antes de reintentar, para evitar un bucle de reinicios
+# instantáneos si la app falla durante el arranque.
 Restart=always
 RestartSec=5
+# Redirige la salida estándar y los errores al diario de systemd (journald).
 StandardOutput=journal
 StandardError=journal
 
 [Install]
+# WantedBy=multi-user.target habilita el servicio para el arranque normal del sistema.
+# Es equivalente al runlevel 3 en sistemas init clásicos: entorno multiusuario sin GUI.
 WantedBy=multi-user.target

@@ -13,8 +13,10 @@ all:
     backend:
       hosts:
         backend-server:
-          # El backend no tiene IP pública; se accede vía ProxyJump a través del frontend.
+          # El backend no tiene IP pública; se accede vía ProxyCommand a través del frontend.
+          # Se usa ProxyCommand (no ProxyJump) porque Ansible no propaga ansible_ssh_private_key_file
+          # al salto con -o ProxyJump=, lo que provoca "Connection closed by UNKNOWN port 65535".
+          # Con ProxyCommand se pasa la llave explícitamente (-i) al salto y se desactiva
+          # StrictHostKeyChecking en ambos niveles (salto y destino).
           ansible_host: <IP Privada Backend>
-          ansible_ssh_common_args: >-
-            -o ProxyJump=ubuntu@<IP Pública Frontend>
-            -o StrictHostKeyChecking=no
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -W %h:%p -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /ruta/a/la/llave/SSH ubuntu@<IP Pública Frontend>"'

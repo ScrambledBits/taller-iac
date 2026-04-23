@@ -11,8 +11,9 @@ resource "aws_vpc" "bootcamperu_taller" {
 # Subnet pública: las instancias aquí pueden tener IP pública y recibir
 # tráfico de internet a través del Internet Gateway.
 resource "aws_subnet" "publica" {
-  vpc_id     = aws_vpc.bootcamperu_taller.id
-  cidr_block = var.public_subnet_cidr
+  vpc_id            = aws_vpc.bootcamperu_taller.id
+  cidr_block        = var.public_subnet_cidr
+  availability_zone = var.availability_zone
 
   tags = {
     Name = "Subnet Publica"
@@ -22,8 +23,9 @@ resource "aws_subnet" "publica" {
 # Subnet privada: las instancias aquí NO tienen IP pública y no son alcanzables
 # directamente desde internet. El backend vive aquí por seguridad.
 resource "aws_subnet" "privada" {
-  vpc_id     = aws_vpc.bootcamperu_taller.id
-  cidr_block = var.private_subnet_cidr
+  vpc_id            = aws_vpc.bootcamperu_taller.id
+  cidr_block        = var.private_subnet_cidr
+  availability_zone = var.availability_zone
 
   tags = {
     Name = "Subnet Privada"

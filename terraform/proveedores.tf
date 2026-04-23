@@ -1,3 +1,10 @@
+# Define los providers que Terraform necesita y configura el backend de estado remoto en S3.
+# Este archivo es el punto de partida de cualquier módulo de Terraform: sin él, Terraform
+# no sabe con qué API hablar ni dónde guardar el registro de la infraestructura creada.
+#
+# Ejecutar 'terraform init' después de cualquier cambio aquí para que Terraform descargue
+# o actualice los providers y reconecte con el backend S3.
+
 terraform {
   required_providers {
     aws = {

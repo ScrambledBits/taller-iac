@@ -1,3 +1,9 @@
+# Parámetros configurables del módulo. Cada variable tiene un valor predeterminado
+# que funciona para el taller, pero puede sobreescribirse en terraform.tfvars o con
+# la opción -var= en la línea de comandos.
+#
+# Ejemplo: terraform apply -var="instance_type=t3.medium"
+
 variable "region" {
   type        = string
   description = "Región de AWS donde se desplegarán los recursos"
@@ -48,4 +54,16 @@ variable "usuario_ssh" {
   type        = string
   description = "Usuario del sistema operativo para conexiones SSH"
   default     = "ubuntu"
+}
+
+variable "monitoreo_cidr" {
+  type        = string
+  description = "CIDR desde el que se permite acceso a puertos de monitoreo (node_exporter :9100, Grafana :3000). Restringir a tu IP en producción."
+  default     = "0.0.0.0/0"
+}
+
+variable "availability_zone" {
+  type        = string
+  description = "Zona de disponibilidad donde se crean las subnets y las instancias EC2."
+  default     = "us-east-1a"
 }

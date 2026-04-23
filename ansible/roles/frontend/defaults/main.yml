@@ -1,4 +1,9 @@
 #SPDX-License-Identifier: MIT-0
 ---
-directorio_web: /var/www/bootcamperu
-nombre_sitio:   bootcamperu
+# Variables con precedencia baja (defaults). Pueden sobreescribirse desde el playbook,
+# desde group_vars/host_vars, o con --extra-vars, sin necesidad de modificar el rol.
+# La prioridad de variables en Ansible va de menor a mayor:
+#   defaults → vars del rol → group_vars → host_vars → --extra-vars
+
+directorio_web: /var/www/bootcamperu  # directorio donde nginx sirve los archivos estáticos del sitio
+nombre_sitio:   bootcamperu           # nombre del sitio en sites-available y sites-enabled de nginx

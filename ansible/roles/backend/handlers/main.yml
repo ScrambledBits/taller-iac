@@ -1,8 +1,14 @@
 #SPDX-License-Identifier: MIT-0
 ---
+# Handler del servicio Flask. Se dispara cuando la tarea 'Instalar servicio systemd'
+# detecta un cambio en el archivo .service. Solo se ejecuta al final del play y
+# solo si fue notificado — igual que todos los handlers de Ansible.
+
 - name: "iniciar {{ nombre_servicio }}"
-  systemd:
+  ansible.builtin.systemd:
     name: "{{ nombre_servicio }}"
-    state: started
-    enabled: yes
-    daemon_reload: yes
+    state: restarted
+    enabled: yes        # activa el arranque automático del servicio al reiniciar la instancia
+    daemon_reload: yes  # equivale a 'systemctl daemon-reload': le indica a systemd que relea
+                        # los archivos .service del disco antes de intentar iniciar el servicio.
+                        # Sin esto, systemd usaría la versión anterior del archivo en memoria.

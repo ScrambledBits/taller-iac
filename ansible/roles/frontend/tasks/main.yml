@@ -1,39 +1,62 @@
 #SPDX-License-Identifier: MIT-0
 ---
+# Instala nginx desde los repositorios de Ubuntu. update_cache: true equivale a
+# ejecutar 'apt update' justo antes, para que apt use la lista de paquetes más reciente.
 - name: Instalar nginx
   ansible.builtin.apt:
     name: nginx
     state: latest
     update_cache: true
 
+# Crea el directorio donde nginx servirá los archivos estáticos (HTML, JS).
+# mode '0755': el propietario puede leer/escribir/ejecutar; el resto puede leer y ejecutar.
+# 'ejecutar' en un directorio significa poder entrar en él (cd) y listar su contenido.
 - name: Crear directorio webroot
   ansible.builtin.file:
     path: "{{ directorio_web }}"
     state: directory
     mode: '0755'
 
+# Renderiza la plantilla Jinja2 y coloca el HTML resultante en el webroot.
+# Ansible sustituye {{ inventory_hostname }} y otras variables antes de copiar el archivo,
+# lo que permite personalizar el contenido en función del host donde se ejecuta.
 - name: Copiar página estática
   ansible.builtin.template:
     src: index.html.j2
     dest: "{{ directorio_web }}/index.html"
 
+# Mismo mecanismo para el JavaScript. Aunque el JS no usa variables de Ansible hoy,
+# usar 'template' en lugar de 'copy' permite añadir variables Jinja2 en el futuro
+# sin necesidad de cambiar el rol ni el playbook.
 - name: Copiar Javascript
   ansible.builtin.template:
     src: api.js.j2
     dest: "{{ directorio_web }}/api.js"
 
+# Coloca la configuración de nginx en sites-available con la IP privada del backend.
+# El 'notify' hace que nginx se reinicie al final del play SOLO si esta tarea
+# introduce algún cambio real — si el archivo ya existe e igual, no hay reinicio.
+# Esto se llama idempotencia: ejecutar el playbook dos veces produce el mismo resultado.
 - name: Configurar reverse proxy
   ansible.builtin.template:
     src: nginx.conf.j2
     dest: "/etc/nginx/sites-available/{{ nombre_sitio }}"
     mode: '0644'
+  notify: reiniciar nginx
 
+# nginx activa sitios mediante un enlace simbólico desde sites-enabled hacia sites-available.
+# Esta es la convención estándar en Debian/Ubuntu: permite activar/desactivar sitios
+# sin borrar su configuración, solo creando o eliminando el enlace.
 - name: Habilitar sitio {{ nombre_sitio }}
   ansible.builtin.file:
     src: "/etc/nginx/sites-available/{{ nombre_sitio }}"
     dest: "/etc/nginx/sites-enabled/{{ nombre_sitio }}"
     state: link
+  notify: reiniciar nginx
 
+# Elimina el sitio 'default' que nginx instala al configurarse en Ubuntu. Sin este paso,
+# nginx serviría su página de bienvenida en el puerto 80 en lugar del sitio del proyecto,
+# porque ambas configuraciones escuchan en el mismo puerto.
 - name: Deshabilitar sitio default
   ansible.builtin.file:
     path: /etc/nginx/sites-enabled/default

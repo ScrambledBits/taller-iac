@@ -79,3 +79,36 @@ resource "aws_vpc_security_group_ingress_rule" "permitir_ssh" {
   ip_protocol       = "tcp"
   to_port           = 22
 }
+
+
+# Permite SSH al backend únicamente desde instancias que tengan el SG común (el frontend).
+# Complementa la regla de SG común (SSH desde 0.0.0.0/0) con una restricción explícita SG-a-SG
+# que hace visible la intención de acceso: solo el frontend puede abrir un túnel ProxyCommand al backend.
+resource "aws_vpc_security_group_ingress_rule" "permitir_ssh_backend" {
+  security_group_id            = aws_security_group.taller_iac_bootcamperu_privado.id
+  referenced_security_group_id = aws_security_group.taller_iac_bootcamperu_comun.id
+  from_port                    = 22
+  ip_protocol                  = "tcp"
+  to_port                      = 22
+  description                  = "SSH al backend solo desde el frontend via ProxyCommand"
+}
+
+# Permite el scraping de métricas de node_exporter. Restringir var.monitoreo_cidr en producción.
+resource "aws_vpc_security_group_ingress_rule" "permitir_node_exporter" {
+  security_group_id = aws_security_group.taller_iac_bootcamperu_comun.id
+  description       = "node_exporter metrics - restringir en produccion"
+  cidr_ipv4         = var.monitoreo_cidr
+  from_port         = 9100
+  ip_protocol       = "tcp"
+  to_port           = 9100
+}
+
+# Permite el acceso a Grafana. Restringir var.monitoreo_cidr en producción.
+resource "aws_vpc_security_group_ingress_rule" "permitir_grafana" {
+  security_group_id = aws_security_group.taller_iac_bootcamperu_comun.id
+  description       = "Grafana dashboard - restringir en produccion"
+  cidr_ipv4         = var.monitoreo_cidr
+  from_port         = 3000
+  ip_protocol       = "tcp"
+  to_port           = 3000
+}

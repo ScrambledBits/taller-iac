@@ -1,5 +1,8 @@
 #SPDX-License-Identifier: MIT-0
 ---
-directorio_app:  /opt/webstack-app
-archivo_app:     app.py
-nombre_servicio: flask-app
+# Variables con precedencia baja (defaults). Pueden sobreescribirse desde el playbook,
+# desde group_vars/host_vars, o con --extra-vars, sin necesidad de modificar el rol.
+
+directorio_app:  /opt/webstack-app  # directorio donde se despliega la aplicación Flask
+archivo_app:     app.py             # nombre del archivo principal de la aplicación Python
+nombre_servicio: flask-app          # nombre del servicio systemd (genera flask-app.service)

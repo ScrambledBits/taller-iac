@@ -1,29 +1,45 @@
 #SPDX-License-Identifier: MIT-0
 ---
+# Instala Python 3 y pip en un solo paso. El módulo apt acepta una lista de paquetes
+# y los instala en una sola operación, lo que es más eficiente que dos tareas separadas.
 - name: Instalar Python 3 y pip
-  apt:
+  ansible.builtin.apt:
     name: [python3, python3-pip]
     state: present
 
+# Instala Flask globalmente con pip3. executable: pip3 asegura que se usa el pip
+# de Python 3 aunque haya otras versiones de Python en el sistema.
+# En producción se usaría un virtualenv para aislar las dependencias de la app,
+# pero para este taller la instalación global es suficiente.
 - name: Instalar Flask
-  pip:
+  ansible.builtin.pip:
     name: flask
     executable: pip3
+    state: present
 
+# Crea el directorio donde se despliega la aplicación. Usar /opt/webstack-app
+# en lugar de /home/ubuntu sigue la convención de Linux: /opt es el directorio
+# estándar para aplicaciones de terceros que no provienen del gestor de paquetes.
 - name: Crear directorio de la app
-  file:
+  ansible.builtin.file:
     path: "{{ directorio_app }}"
     state: directory
     mode: '0755'
 
+# Copia app.py desde el nodo de control (tu máquina local) a la instancia remota.
+# Se usa 'copy' y no 'template' porque app.py es código Python, no una plantilla:
+# sus variables las gestiona Python en tiempo de ejecución, no Jinja2 en el deploy.
 - name: Copiar app.py
-  copy:
+  ansible.builtin.copy:
     src: "{{ archivo_app }}"
     dest: "{{ directorio_app }}/{{ archivo_app }}"
     mode: '0644'
 
+# Renderiza la plantilla del servicio systemd y la instala en el directorio del sistema.
+# El 'notify' dispara el handler que recarga systemd y arranca/reinicia el servicio
+# SOLO si el archivo cambia — evita reinicios innecesarios al re-ejecutar el playbook.
 - name: Instalar servicio systemd
-  template:
+  ansible.builtin.template:
     src: flask-app.service.j2
     dest: "/etc/systemd/system/{{ nombre_servicio }}.service"
   notify: "iniciar {{ nombre_servicio }}"

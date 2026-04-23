@@ -1,10 +1,14 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# Tareas del rol comun: actualización del sistema operativo
+# Tareas del rol comun: actualización completa del sistema operativo.
+# Ejecutar este rol antes que cualquier otro garantiza tres cosas:
+#   1. Los paquetes que se instalen después no tendrán conflictos con versiones antiguas.
+#   2. Se aplican los parches de seguridad disponibles antes de exponer el servidor.
+#   3. El estado base es consistente entre instancias aunque se hayan creado en momentos distintos.
 - name: Actualizar sistema
   ansible.builtin.apt:
-    name: "*"
-    state: latest
-    update_cache: yes
-    autoclean: true
-    autoremove: true
+    name: "*"          # el asterisco indica "todos los paquetes instalados"
+    state: latest      # actualiza a la versión más reciente disponible en los repositorios
+    update_cache: yes  # equivale a 'apt update': refresca la lista de paquetes disponibles
+    autoclean: true    # elimina archivos .deb descargados que ya no se pueden instalar
+    autoremove: true   # elimina dependencias que ya no son necesarias por ningún paquete

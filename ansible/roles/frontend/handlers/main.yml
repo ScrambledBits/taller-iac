@@ -1,8 +1,11 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# Handlers del rol frontend
+# Los handlers se ejecutan una sola vez al final del play, solo si fueron notificados
+# por alguna tarea que introdujo un cambio. Si tres tareas notifican el mismo handler,
+# nginx se reinicia una sola vez — no tres. Esto evita reinicios innecesarios.
+
 - name: reiniciar nginx
-  service:
+  ansible.builtin.service:
     name: nginx
     state: restarted
-    enabled: yes
+    enabled: yes  # garantiza que nginx arranque automáticamente cuando se reinicie la instancia

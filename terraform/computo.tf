@@ -1,5 +1,11 @@
-# AMI (Amazon Machine Image): imagen base de Ubuntu 22.04 LTS publicada
-# por Canonical (ID de cuenta: 099720109477). Se selecciona la más reciente.
+# Consulta dinámica de la AMI de Ubuntu 22.04 LTS más reciente publicada por Canonical.
+# Usar 'data' en lugar de un AMI ID fijo garantiza que se usa la imagen más actualizada
+# en cada región, sin necesidad de actualizar el código cuando Canonical publica parches.
+#
+# most_recent = true  → si hay varias imágenes que coinciden, usa la más nueva
+# owners              → ID de cuenta de Canonical; evita usar AMIs de terceros no verificados
+# filter name         → hvm-ssd: virtualización HVM (el tipo estándar y recomendado hoy)
+#                       con almacenamiento EBS de tipo SSD
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]

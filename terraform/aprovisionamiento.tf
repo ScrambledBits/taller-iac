@@ -29,9 +29,10 @@ resource "local_file" "ansible_inventory" {
             backend-server:
               # El backend no tiene IP pública; se accede vía ProxyJump a través del frontend.
               ansible_host: ${aws_instance.backend.private_ip}
-              ansible_ssh_common_args: >-
-                -o ProxyJump=${var.usuario_ssh}@${aws_instance.frontend.public_ip}
-                -o StrictHostKeyChecking=no
+              # ProxyCommand pasa la llave explícitamente al salto (frontend).
+              # Con -o ProxyJump= Ansible no propaga ansible_ssh_private_key_file al salto,
+              # lo que causa "Connection closed by UNKNOWN port 65535".
+              ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -W %h:%p -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${local.ruta_llave_ssh} ${var.usuario_ssh}@${aws_instance.frontend.public_ip}"'
     YAML
 
   depends_on = [aws_instance.frontend, aws_instance.backend]

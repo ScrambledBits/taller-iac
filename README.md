@@ -66,11 +66,14 @@ graph LR
 
     subgraph SG_PRIV["SG Privado"]
         pr1["ingress :5000  desde SG Público"]
+        pr2["ingress :22    desde SG Común (bastion SSH)"]
     end
 
     subgraph SG_COM["SG Común"]
-        c1["ingress :22   desde 0.0.0.0/0"]
-        c2["egress  todo  hacia 0.0.0.0/0"]
+        c1["ingress :22    desde 0.0.0.0/0"]
+        c2["ingress :9100  desde var.monitoreo_cidr"]
+        c3["ingress :3000  desde var.monitoreo_cidr"]
+        c4["egress  todo   hacia 0.0.0.0/0"]
     end
 
     FE["Frontend EC2"] --- SG_PUB
@@ -82,8 +85,8 @@ graph LR
 Los tres security groups separan responsabilidades:
 
 - **Público**: expone el puerto 80 a internet. Solo el frontend lo tiene.
-- **Privado**: permite el puerto 5000 *únicamente desde instancias que tengan el SG público*. Esta referencia SG-a-SG es más robusta que un CIDR: si el frontend cambia de IP la regla sigue siendo válida.
-- **Común**: SSH y egress, aplicado a ambas instancias. Centralizar estas reglas evita duplicación.
+- **Privado**: permite el puerto 5000 *únicamente desde instancias que tengan el SG público*. También permite SSH *únicamente desde instancias con SG común* (el frontend actúa como bastion). Estas referencias SG-a-SG son más robustas que un CIDR: si el frontend cambia de IP las reglas siguen siendo válidas.
+- **Común**: SSH desde `0.0.0.0/0` y todo el tráfico de salida, aplicado a ambas instancias. Los puertos de monitoreo (node_exporter `:9100` y Grafana `:3000`) se restringen con `var.monitoreo_cidr`. Centralizar estas reglas evita duplicación.
 
 ### Pipeline de despliegue
 
@@ -176,7 +179,7 @@ Conceptos usados en este proyecto:
 | `handler` | `roles/*/handlers/main.yml` | Acción que se ejecuta solo cuando una tarea notifica un cambio |
 | `vars` / `defaults` | `roles/*/vars/`, `defaults/` | Variables del rol (`vars` tiene mayor precedencia que `defaults`) |
 
-El inventario de este proyecto es **generado automáticamente por Terraform**: incluye las IPs reales de las instancias y configura el `ProxyJump` para que Ansible acceda al backend a través del frontend. El backend nunca necesita IP pública.
+El inventario de este proyecto es **generado automáticamente por Terraform**: incluye las IPs reales de las instancias y configura un `ProxyCommand` para que Ansible acceda al backend a través del frontend. Se usa `ProxyCommand` (no `ProxyJump`) porque Ansible necesita pasar la llave SSH explícitamente al salto — `ProxyJump` no propaga `ansible_ssh_private_key_file` al host intermedio. El backend nunca necesita IP pública.
 
 ---
 
@@ -221,7 +224,7 @@ Al terminar de crear los recursos de AWS, dos `provisioner` en `aprovisionamient
 
 El playbook tiene dos **plays** independientes: uno para el grupo `frontend` y otro para `backend`. Cada play aplica primero el rol `comun` (actualización del SO) y luego el rol específico del servicio.
 
-El inventario generado por Terraform configura el acceso al backend con `ProxyJump`: Ansible se conecta primero al frontend y desde ahí salta al backend sin que este necesite IP pública.
+El inventario generado por Terraform configura el acceso al backend con `ProxyCommand`: Ansible se conecta primero al frontend y desde ahí alcanza el backend sin que este necesite IP pública.
 
 ### 3. Los servicios quedan activos
 
@@ -484,6 +487,8 @@ El backend no tiene IP pública. La opción `ProxyJump` abre un túnel SSH a tra
 | `nombre_proyecto` | `taller-bootcamperu` | Prefijo para los nombres de los recursos en AWS |
 | `nombre_llave_ssh` | `taller.pem` | Nombre del archivo de la llave SSH generada por Terraform |
 | `usuario_ssh` | `ubuntu` | Usuario del SO en las instancias (ubuntu en AMIs de Canonical) |
+| `monitoreo_cidr` | `0.0.0.0/0` | CIDR desde el que se permite acceso a node_exporter `:9100` y Grafana `:3000`. Restringir a tu IP en producción |
+| `availability_zone` | `us-east-1a` | Zona de disponibilidad donde se crean las subnets y las instancias. No todos los tipos de instancia están disponibles en todas las zonas |
 
 Para sobreescribir un valor sin editar `terraform.tfvars`:
 
