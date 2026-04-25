@@ -1,0 +1,61 @@
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+jobs:
+  validar-terraform:
+    name: Revisar el código Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Instalar Terraform"
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.14.9"
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check
+        continue-on-error: true
+        working-directory: ./terraform
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -input=false
+        working-directory: ./terraform
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        working-directory: ./terraform
+
+  desplegar:
+    name: Desplegar infraestructura y apps
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Configurar credenciales AWS"
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with: 
+          aws-region: us-east-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: "Demostrar que podemos acceder a AWS"
+        run: |
+          aws sts get-caller-identity
+
+      - name: "Instalar Terraform"
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.14.9"
+
+      - uses: actions/checkout@v4
