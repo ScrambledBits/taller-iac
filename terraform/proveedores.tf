@@ -6,6 +6,7 @@
 # o actualice los providers y reconecte con el backend S3.
 
 terraform {
+  required_version = ">= 1.14.8"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
