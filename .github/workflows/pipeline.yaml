@@ -103,6 +103,7 @@ jobs:
   desplegar:
     name: Desplegar infraestructura y apps
     runs-on: ubuntu-latest
+    environment: production
     needs: ['validar-terraform', 'validar-ansible']
     steps:
       - name: "Configurar credenciales AWS"
@@ -126,9 +127,11 @@ jobs:
 
       - name: Crear plan
         id: plan
+        if: ${{ github.event == 'pull_request' }}
         run: terraform plan -no-color -out=pipeline.tfplan
         working-directory: ./terraform
 
-      - name: Verificar archivos
-        run: pwd && ls -lah
+      - name: Aplicar el plan de terraform
+        if: ${{ github.event == 'pull_request' }}
+        run: terraform apply pipeline.tfplan
         working-directory: ./terraform
