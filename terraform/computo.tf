@@ -24,7 +24,7 @@ resource "aws_instance" "frontend" {
   associate_public_ip_address = true
   key_name                    = aws_key_pair.bootcamp.key_name
   vpc_security_group_ids      = [aws_security_group.taller_iac_bootcamperu_publico.id, aws_security_group.taller_iac_bootcamperu_comun.id]
-  metadata_options = {
+  metadata_options {
     http_endpoint = "enabled"
     http_tokens = "required"
   }
@@ -44,7 +44,7 @@ resource "aws_instance" "backend" {
   associate_public_ip_address = false
   key_name                    = aws_key_pair.bootcamp.key_name
   vpc_security_group_ids      = [aws_security_group.taller_iac_bootcamperu_privado.id, aws_security_group.taller_iac_bootcamperu_comun.id]
-  metadata_options = {
+  metadata_options {
     http_endpoint = "enabled"
     http_tokens = "required"
   }
