@@ -32,7 +32,7 @@ resource "aws_instance" "frontend" {
 
 # Instancia privada que ejecuta la aplicación Flask. Se ubica en la subnet
 # privada sin IP pública: solo es alcanzable desde el frontend vía IP privada.
-# El acceso SSH se realiza a través del frontend como bastion host.
+# El acceso SSH se realiza a través del frontend como bastion host. 
 resource "aws_instance" "backend" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
