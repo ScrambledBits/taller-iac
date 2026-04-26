@@ -32,3 +32,4 @@ skip-check:
   - CKV2_AWS_5    # Security group not attached to resource: false positive with dynamic SG refs
   - CKV2_AWS_11   # VPC flow logging disabled: skipped for cost control in training
   - CKV2_AWS_12   # Default SG restricts traffic: workshop VPC default SG not managed here
+  - CKV2_AWS_41   # IAM role attached to EC2: no instance profile needed in this workshop
