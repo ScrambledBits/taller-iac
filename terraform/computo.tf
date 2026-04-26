@@ -24,6 +24,10 @@ resource "aws_instance" "frontend" {
   associate_public_ip_address = true
   key_name                    = aws_key_pair.bootcamp.key_name
   vpc_security_group_ids      = [aws_security_group.taller_iac_bootcamperu_publico.id, aws_security_group.taller_iac_bootcamperu_comun.id]
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens = "required"
+  }
 
   tags = {
     Name = "Instancia Frontend"
@@ -32,7 +36,7 @@ resource "aws_instance" "frontend" {
 
 # Instancia privada que ejecuta la aplicación Flask. Se ubica en la subnet
 # privada sin IP pública: solo es alcanzable desde el frontend vía IP privada.
-# El acceso SSH se realiza a través del frontend como bastion host.
+# El acceso SSH se realiza a través del frontend como bastion host. 
 resource "aws_instance" "backend" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
@@ -40,6 +44,10 @@ resource "aws_instance" "backend" {
   associate_public_ip_address = false
   key_name                    = aws_key_pair.bootcamp.key_name
   vpc_security_group_ids      = [aws_security_group.taller_iac_bootcamperu_privado.id, aws_security_group.taller_iac_bootcamperu_comun.id]
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens = "required"
+  }
 
   tags = {
     Name = "Instancia Backend"
