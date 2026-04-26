@@ -1,0 +1,40 @@
+name: Destruir infraestructura
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacion:
+        description: 'Escribe "destruir" para confirmar la eliminación de toda la infraestructura'
+        required: true
+
+jobs:
+  destruir:
+    name: Destruir infraestructura
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event.inputs.confirmacion == 'destruir'
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.14.9"
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -input=false
