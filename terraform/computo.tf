@@ -26,7 +26,7 @@ resource "aws_instance" "frontend" {
   vpc_security_group_ids      = [aws_security_group.taller_iac_bootcamperu_publico.id, aws_security_group.taller_iac_bootcamperu_comun.id]
   metadata_options {
     http_endpoint = "enabled"
-    http_tokens = "required"
+    http_tokens   = "required"
   }
 
   tags = {
@@ -46,7 +46,7 @@ resource "aws_instance" "backend" {
   vpc_security_group_ids      = [aws_security_group.taller_iac_bootcamperu_privado.id, aws_security_group.taller_iac_bootcamperu_comun.id]
   metadata_options {
     http_endpoint = "enabled"
-    http_tokens = "required"
+    http_tokens   = "required"
   }
 
   tags = {

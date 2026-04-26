@@ -1,140 +1,177 @@
+name: Pipeline IaC BootcampPeru
+
 on:
   push:
     branches:
-      - 'main'
+      - main
   pull_request:
     branches:
-      - 'main'
+      - main
   workflow_dispatch:
     inputs:
       environment:
-        description: 'produccion'
+        description: 'Entorno de destino'
         type: environment
         required: true
 
+# Cancela ejecuciones anteriores en la misma rama para evitar applies simultáneos.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # ── Job 1: Lint de Terraform ─────────────────────────────────────────────
+  # Ejecuta en: todo push/PR. NO necesita credenciales AWS (-backend=false).
   validar-terraform:
     name: Revisar el código Terraform
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
+        working-directory: ./terraform
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Configurar credenciales AWS"
-        uses: aws-actions/configure-aws-credentials@v6.1.0
-        with: 
-          aws-region: us-east-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - name: "Instalar Terraform"
+      - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.14.9"
 
       - name: Terraform fmt
-        id: fmt
-        run: terraform fmt -check
-        continue-on-error: true
-        working-directory: ./terraform
+        run: terraform fmt -check -recursive
 
-      - name: Terraform Init
-        id: init
-        run: terraform init -input=false
-        working-directory: ./terraform
+      - name: Terraform Init (sin backend)
+        run: terraform init -backend=false -input=false
 
       - name: Terraform Validate
-        id: validate
         run: terraform validate -no-color
-        working-directory: ./terraform
 
-      - uses: terraform-linters/setup-tflint@v6
-        name: Setup TFLint
+      - name: Instalar TFLint
+        uses: terraform-linters/setup-tflint@v4
         with:
-          tflint_version: v0.52.0
-          cache: true
+          tflint_version: v0.61.0
 
-      - name: Show version
-        run: tflint --version
-
-      - name: Init TFLint
-        run: tflint --init
-        working-directory: ./terraform
+      - name: TFLint Init
+        run: tflint --config=.tflint.hcl --init
         env:
-          # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Run TFLint
-        run: tflint -f compact
-        working-directory: ./terraform
+      - name: TFLint Run
+        run: tflint --config=.tflint.hcl -f compact
 
-      # - name: Terraform security scan
-      #   uses: triat/terraform-security-scan@v3.2.0
-
-      # - name: Terrascan IaC scanner
-      #   uses: tenable/terrascan-action@v1.4.1
-      #   with:
-      #     iac_type: 'terraform'
-      #     iac_version: 'v14'
-      #     policy_type: 'aws'
-      #     only_warn: true
-      #     verbose: true
-      #     sarif_upload: true
-      #     iac_dir: ./terraform
-
-  validar-ansible:
-    name: Revisar el código Ansible
+  # ── Job 2: Escaneo de seguridad de Terraform ─────────────────────────────
+  # Ejecuta en: todo push/PR. Lee .checkov.yaml para exclusiones del workshop.
+  escanear-terraform:
+    name: Escanear seguridad de Terraform
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Ansible
-        uses: alex-oleshkevich/setup-ansible@v1.0.1
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
         with:
-          version: "13.6.0"
+          config_file: .checkov.yaml
 
-      # - name: run-ansible-lint
-      #   uses: ansible/ansible-lint@v26.4.0
-      #   with:
-      #     setup_python: "true"
-      #     python_version: "3.14"
-      #     working_directory: "./ansible"
-
-  desplegar:
-    name: Desplegar infraestructura y apps
+  # ── Job 3: Lint de Ansible ────────────────────────────────────────────────
+  # Ejecuta en: todo push/PR. Instala ansible-lint via pip para control exacto.
+  validar-ansible:
+    name: Revisar el código Ansible
     runs-on: ubuntu-latest
-    environment: production
-    needs: ['validar-terraform', 'validar-ansible']
+
     steps:
-      - name: "Configurar credenciales AWS"
-        uses: aws-actions/configure-aws-credentials@v6.1.0
-        with: 
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar ansible-lint
+        run: pip install "ansible-lint[community,yamllint]" "ansible-core>=2.20"
+
+      - name: Ejecutar ansible-lint
+        run: ansible-lint ansible/playbook.yaml
+
+  # ── Job 4: Terraform Plan (solo en PR) ───────────────────────────────────
+  # Necesita credenciales AWS para acceder al backend S3.
+  planificar-terraform:
+    name: Planificar cambios de Terraform
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [validar-terraform, escanear-terraform, validar-ansible]
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
           aws-region: us-east-1
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: "Instalar Terraform"
+      - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.14.9"
 
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        run: terraform plan -no-color -input=false
+
+  # ── Job 5: Deploy (solo en push a main o workflow_dispatch) ──────────────
+  # NO ejecuta en pull_request.
+  # Instala Ansible porque aprovisionamiento.tf usa local-exec para ansible-playbook.
+  desplegar:
+    name: Desplegar infraestructura y apps
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [validar-terraform, escanear-terraform, validar-ansible]
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./terraform
+
+    steps:
       - uses: actions/checkout@v4
 
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.14.9"
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar Ansible
+        run: pip install "ansible-core>=2.20"
+
+      - name: Verificar ansible-playbook
+        run: ansible-playbook --version
+
       - name: Terraform Init
-        id: init
         run: terraform init -input=false
-        working-directory: ./terraform
 
       - name: Crear plan
-        id: plan
-        run: terraform plan -no-color -out=pipeline.tfplan
-        working-directory: ./terraform
+        run: terraform plan -no-color -input=false -out=pipeline.tfplan
 
-      - name: Aplicar el plan de terraform
-        run: terraform apply pipeline.tfplan
-        working-directory: ./terraform
+      - name: Aplicar el plan de Terraform
+        run: terraform apply -auto-approve pipeline.tfplan

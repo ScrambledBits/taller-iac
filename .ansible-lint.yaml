@@ -1,0 +1,21 @@
+profile: basic
+
+exclude_paths:
+  - ansible/inventario_terraform.yaml
+  - ansible/inventario_terraform.ejemplo.yaml
+  - ansible/roles/frontend/tests/
+  - ansible/roles/backend/tests/
+  - ansible/roles/comun/tests/
+
+warn_list:
+  - yaml[truthy]
+  - name[casing]
+
+skip_list:
+  - package-latest              # comun/tasks/main.yml uses state:latest intentionally (full apt upgrade)
+  - yaml[line-length]           # ProxyCommand strings in inventario are machine-generated
+  - yaml[comments]              # ansible-galaxy generated files use bare # comments without leading space
+  - yaml[colons]                # alignment spacing in defaults files is intentional for readability
+  - var-naming[no-role-prefix]  # role variables use shared names (directorio_web, nombre_sitio) referenced across templates; renaming would break templates
+
+use_default_rules: true
