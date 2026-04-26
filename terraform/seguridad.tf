@@ -23,6 +23,7 @@ resource "aws_security_group" "taller_iac_bootcamperu_publico" {
 
 resource "aws_vpc_security_group_ingress_rule" "permitir_http" {
   security_group_id = aws_security_group.taller_iac_bootcamperu_publico.id
+  description       = "HTTP publico para el frontend"
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 80
   ip_protocol       = "tcp"
@@ -46,6 +47,7 @@ resource "aws_security_group" "taller_iac_bootcamperu_privado" {
 resource "aws_vpc_security_group_ingress_rule" "permitir_proxy" {
   security_group_id            = aws_security_group.taller_iac_bootcamperu_privado.id
   referenced_security_group_id = aws_security_group.taller_iac_bootcamperu_publico.id
+  description                  = "Flask :5000 solo desde el frontend (SG-a-SG)"
   from_port                    = 5000
   ip_protocol                  = "tcp"
   to_port                      = 5000
@@ -66,6 +68,7 @@ resource "aws_security_group" "taller_iac_bootcamperu_comun" {
 # para instalar paquetes con apt y pip. ip_protocol = "-1" significa "todos los protocolos".
 resource "aws_vpc_security_group_egress_rule" "permitir_trafico_salida" {
   security_group_id = aws_security_group.taller_iac_bootcamperu_comun.id
+  description       = "Egress total para apt/pip - restringir en produccion"
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
 }
@@ -74,6 +77,7 @@ resource "aws_vpc_security_group_egress_rule" "permitir_trafico_salida" {
 # o se eliminaría en favor de AWS Systems Manager Session Manager.
 resource "aws_vpc_security_group_ingress_rule" "permitir_ssh" {
   security_group_id = aws_security_group.taller_iac_bootcamperu_comun.id
+  description       = "SSH abierto para el taller - restringir en produccion"
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 22
   ip_protocol       = "tcp"

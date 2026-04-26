@@ -1,0 +1,34 @@
+soft-fail: false
+
+directory:
+  - terraform
+
+framework:
+  - terraform
+
+# Speeds up local runs by not downloading remote module sources.
+download-external-modules: false
+
+# Rules skipped for intentional workshop relaxations.
+# Each has a documented reason — revisit before any production use.
+skip-check:
+  # EC2 — training cost control
+  - CKV_AWS_126   # Detailed monitoring disabled: unnecessary cost in training
+  - CKV_AWS_135   # EBS-optimized not enabled: t3.micro is EBS-optimized by default but Checkov flags it
+
+  # Networking — intentional open access for workshop
+  - CKV_AWS_277   # Unrestricted ingress (aws_vpc_security_group_ingress_rule): SSH/:22 and HTTP/:80 are intentional
+  - CKV_AWS_382   # Unrestricted egress (aws_vpc_security_group_egress_rule): instances need internet for apt/pip
+
+  # Legacy check IDs for aws_security_group inline rules (kept in case of provider version variance)
+  - CKV_AWS_24    # SSH :22 from 0.0.0.0/0
+  - CKV_AWS_25    # SSH :22 from 0.0.0.0/0 (alias)
+  - CKV_AWS_260   # HTTP :80 from 0.0.0.0/0
+
+  # Other workshop relaxations
+  - CKV_AWS_8     # EBS volume encryption: skipped for training cost control
+  - CKV_AWS_88    # EC2 has public IP: frontend is intentionally public-facing
+  - CKV_AWS_130   # Subnet assigns public IPs: public subnet needs this for frontend
+  - CKV2_AWS_5    # Security group not attached to resource: false positive with dynamic SG refs
+  - CKV2_AWS_11   # VPC flow logging disabled: skipped for cost control in training
+  - CKV2_AWS_12   # Default SG restricts traffic: workshop VPC default SG not managed here
