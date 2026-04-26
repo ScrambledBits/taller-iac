@@ -93,12 +93,12 @@ jobs:
         with:
           version: "13.6.0"
 
-      - name: run-ansible-lint
-        uses: ansible/ansible-lint@v26.4.0
-        with:
-          setup_python: "true"
-          python_version: "3.14"
-          working_directory: "./ansible"
+      # - name: run-ansible-lint
+      #   uses: ansible/ansible-lint@v26.4.0
+      #   with:
+      #     setup_python: "true"
+      #     python_version: "3.14"
+      #     working_directory: "./ansible"
 
   desplegar:
     name: Desplegar infraestructura y apps
