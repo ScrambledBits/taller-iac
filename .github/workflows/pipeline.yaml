@@ -6,6 +6,11 @@ on:
     branches:
       - 'main'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'produccion'
+        type: environment
+        required: true
 
 jobs:
   validar-terraform:
@@ -127,11 +132,9 @@ jobs:
 
       - name: Crear plan
         id: plan
-        if: ${{ github.event == 'pull_request' }}
         run: terraform plan -no-color -out=pipeline.tfplan
         working-directory: ./terraform
 
       - name: Aplicar el plan de terraform
-        if: ${{ github.event == 'pull_request' }}
         run: terraform apply pipeline.tfplan
         working-directory: ./terraform
