@@ -1,3 +1,28 @@
+# Pipeline de CI/CD para el taller de IaC de BootcampPeru.
+#
+# ESTRUCTURA: 5 jobs con responsabilidades separadas.
+# Separar en jobs independientes (en vez de un solo job grande) tiene dos ventajas:
+#   - Los tres jobs de validación corren EN PARALELO, reduciendo el tiempo de feedback.
+#   - Si falla solo el linter de Ansible, el resultado es claro y localizado; un job
+#     monolítico solo diría "falló el pipeline" sin indicar en qué etapa.
+#
+# FLUJO SEGÚN EL EVENTO:
+#   push a main (merge de PR) → jobs 1+2+3 en paralelo → job 5 (apply)
+#   pull_request a main       → jobs 1+2+3 en paralelo → job 4 (plan)
+#   workflow_dispatch (manual) → jobs 1+2+3 en paralelo → job 5 (apply)
+#
+# REGLA FUNDAMENTAL: el apply (terraform apply) nunca ocurre en una rama de trabajo.
+# Solo ocurre cuando el código ya fue revisado, aprobado y mergeado a main.
+# Esto garantiza que la infraestructura siempre refleja el estado de la rama principal.
+#
+# CREDENCIALES AWS:
+# Los jobs 1, 2 y 3 (lint/scan) NO necesitan credenciales AWS. Usan datos locales
+# o descargan providers del registry público de Terraform. Esto los hace más rápidos,
+# más seguros (menos exposición de secrets), y ejecutables en forks del repositorio.
+# Solo los jobs 4 y 5 necesitan AWS para acceder al backend S3 con el estado remoto.
+# Los secrets AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY se configuran en:
+# Settings del repositorio → Secrets and variables → Actions → New repository secret.
+
 name: Pipeline IaC BootcampPeru
 
 on:
@@ -14,14 +39,24 @@ on:
         type: environment
         required: true
 
-# Cancela ejecuciones anteriores en la misma rama para evitar applies simultáneos.
+# concurrency: evita que dos ejecuciones del pipeline corran simultáneamente sobre
+# la misma rama. Si alguien hace push dos veces seguidas, el primer run se cancela
+# cuando arranca el segundo. Esto es especialmente importante para 'desplegar':
+# dos 'terraform apply' al mismo tiempo sobre el mismo estado remoto pueden generar
+# conflictos o corromper el archivo de estado (.tfstate).
+# cancel-in-progress: true cancela el run anterior en lugar de esperar a que termine.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   # ── Job 1: Lint de Terraform ─────────────────────────────────────────────
-  # Ejecuta en: todo push/PR. NO necesita credenciales AWS (-backend=false).
+  # Verifica formato, sintaxis y buenas prácticas del código HCL.
+  # Usa 'terraform init -backend=false' para descargar los providers del Registry público
+  # sin conectarse al backend S3. Así este job funciona SIN credenciales AWS, es más
+  # rápido y se puede ejecutar en cualquier fork del repositorio.
+  # Si 'terraform fmt' detecta diferencias de formato, el job falla inmediatamente:
+  # el código debe estar formateado antes de hacer push (usar 'terraform fmt' localmente).
   validar-terraform:
     name: Revisar el código Terraform
     runs-on: ubuntu-latest
@@ -47,6 +82,10 @@ jobs:
       - name: Terraform Validate
         run: terraform validate -no-color
 
+      # setup-tflint@v4 instala TFLint en el runner. Se usa @v4 porque es la versión
+      # mayor correcta de esta action (el pipeline original usaba @v6 por error;
+      # terraform-linters/setup-tflint no tiene versión 6, la última mayor es v4).
+      # tflint_version debe coincidir con la versión instalada localmente (ver .tflint.hcl).
       - name: Instalar TFLint
         uses: terraform-linters/setup-tflint@v4
         with:
@@ -61,7 +100,12 @@ jobs:
         run: tflint --config=.tflint.hcl -f compact
 
   # ── Job 2: Escaneo de seguridad de Terraform ─────────────────────────────
-  # Ejecuta en: todo push/PR. Lee .checkov.yaml para exclusiones del workshop.
+  # Analiza los archivos .tf buscando configuraciones inseguras o no conformes con
+  # buenas prácticas (cifrado en reposo, control de acceso, logging, etc.).
+  # Lee .checkov.yaml para saber qué reglas están desactivadas intencionalmente
+  # para este taller (por ejemplo, SSH abierto desde 0.0.0.0/0 es necesario para
+  # que los estudiantes puedan conectarse, pero Checkov lo marcaría como error).
+  # Corre en paralelo con los jobs 1 y 3 para reducir el tiempo total de feedback.
   escanear-terraform:
     name: Escanear seguridad de Terraform
     runs-on: ubuntu-latest
@@ -75,7 +119,13 @@ jobs:
           config_file: .checkov.yaml
 
   # ── Job 3: Lint de Ansible ────────────────────────────────────────────────
-  # Ejecuta en: todo push/PR. Instala ansible-lint via pip para control exacto.
+  # Verifica que el código Ansible siga buenas prácticas: nombres de tareas descriptivos,
+  # uso de módulos con nombre completo (FQCN: fully qualified collection name, ej:
+  # ansible.builtin.apt en vez de solo apt), formato YAML correcto, etc.
+  # Lee .ansible-lint.yaml para conocer el perfil de reglas y las excepciones del taller.
+  #
+  # Se instala ansible-lint via pip en cada ejecución porque los runners de GitHub Actions
+  # son efímeros: se crean de cero para cada job y no persisten entre ejecuciones.
   validar-ansible:
     name: Revisar el código Ansible
     runs-on: ubuntu-latest
@@ -95,7 +145,17 @@ jobs:
         run: ansible-lint ansible/playbook.yaml
 
   # ── Job 4: Terraform Plan (solo en PR) ───────────────────────────────────
-  # Necesita credenciales AWS para acceder al backend S3.
+  # Calcula y muestra los cambios que terraform apply realizaría sobre la infraestructura,
+  # sin ejecutarlos. Permite revisar el impacto antes de aprobar el merge.
+  #
+  # La condición 'if: github.event_name == "pull_request"' garantiza que este job
+  # no corra en push a main (el código ya fue revisado y aprobado en el PR).
+  #
+  # 'needs:' asegura que los tres jobs de validación pasen antes de intentar el plan:
+  # no tiene sentido planificar sobre código que no pasa el linter o el escaneo de seguridad.
+  #
+  # Este job SÍ necesita credenciales AWS para conectarse al backend S3 y leer el estado
+  # actual de la infraestructura: terraform plan lo necesita para calcular el diff.
   planificar-terraform:
     name: Planificar cambios de Terraform
     runs-on: ubuntu-latest
@@ -128,8 +188,19 @@ jobs:
         run: terraform plan -no-color -input=false
 
   # ── Job 5: Deploy (solo en push a main o workflow_dispatch) ──────────────
-  # NO ejecuta en pull_request.
-  # Instala Ansible porque aprovisionamiento.tf usa local-exec para ansible-playbook.
+  # Aplica los cambios de infraestructura. Solo se ejecuta cuando el código ya está
+  # en main (después de un merge) o cuando se dispara manualmente.
+  # La condición excluye pull_request: el apply NUNCA ocurre en una rama de trabajo.
+  #
+  # 'environment: production': activa las reglas de protección configuradas en GitHub
+  # (Settings → Environments → production). Si hay revisores requeridos configurados,
+  # el job se pausa hasta que alguien apruebe manualmente antes de ejecutar el apply.
+  # Es el último nivel de control humano antes de modificar infraestructura real en AWS.
+  #
+  # Este job instala Ansible porque aprovisionamiento.tf usa un provisioner 'local-exec'
+  # para ejecutar ansible-playbook directamente desde el runner de CI. El runner actúa
+  # como nodo de control de Ansible durante el apply. Solo se necesita ansible-core
+  # (sin colecciones adicionales) porque el playbook usa únicamente módulos del paquete base.
   desplegar:
     name: Desplegar infraestructura y apps
     runs-on: ubuntu-latest

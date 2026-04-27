@@ -1,3 +1,23 @@
+# Workflow para destruir TODA la infraestructura del taller.
+#
+# ADVERTENCIA: Esta acción es IRREVERSIBLE. Al completarse, se eliminarán:
+#   - Las instancias EC2 (frontend y backend) y todos sus datos en disco
+#   - La VPC, subnets, Internet Gateway, NAT Gateway y su Elastic IP
+#   - Los Security Groups y el Key Pair de SSH
+#   - El archivo de estado en S3 NO se elimina (permite inspeccionar qué había)
+#
+# USO PREVISTO: Apagar el entorno al terminar el taller para evitar cargos innecesarios.
+# El NAT Gateway cuesta aproximadamente $0.045 USD/hora incluso sin tráfico.
+# Destruir la infraestructura cuando no se usa es la práctica correcta para controlar
+# costos en la nube — los recursos de AWS generan cargos mientras existen, no solo cuando
+# reciben tráfico.
+#
+# CÓMO EJECUTAR:
+#   1. Ir a Actions → "Destruir infraestructura" → Run workflow
+#   2. Escribir exactamente "destruir" en el campo de confirmación
+#   3. Si el entorno 'production' tiene revisores requeridos, aprobar en el paso siguiente
+#   4. Terraform destruirá todos los recursos en orden inverso al que los creó
+
 name: Destruir infraestructura
 
 on:
@@ -8,6 +28,13 @@ on:
         required: true
 
 jobs:
+  # La condición verifica que el usuario haya escrito exactamente "destruir" en el campo
+  # de confirmación. Si escribe cualquier otra cosa, el job aparece como "skipped" (omitido)
+  # sin error — el workflow termina silenciosamente sin destruir nada.
+  # Esto, combinado con 'environment: production', crea dos capas de protección contra
+  # ejecuciones accidentales:
+  #   1. Confirmación por texto: evita clics accidentales en "Run workflow"
+  #   2. Aprobación del entorno: requiere revisión humana explícita (si está configurado)
   destruir:
     name: Destruir infraestructura
     runs-on: ubuntu-latest
@@ -36,5 +63,8 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false
 
+      # terraform destroy lee el estado remoto en S3, calcula qué recursos existen
+      # y los elimina en el orden correcto (respetando dependencias entre recursos).
+      # -auto-approve omite la confirmación interactiva (ya se confirmó con el input).
       - name: Terraform Destroy
         run: terraform destroy -auto-approve -input=false

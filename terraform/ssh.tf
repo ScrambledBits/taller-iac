@@ -2,6 +2,19 @@
 # no en AWS). Terraform almacena la clave privada en el estado — no uses este enfoque
 # en producción con estado compartido. En entornos reales se generan las llaves fuera de
 # Terraform y se referencia solo la clave pública.
+#
+# algorithm = "RSA": es el algoritmo más compatible con AWS Key Pairs y con la mayoría
+#   de clientes SSH. ECDSA con la curva ed25519 sería más eficiente en cómputo, pero RSA
+#   tiene mejor soporte histórico en AWS y en herramientas de administración de servidores.
+# rsa_bits = 4096: tamaño de clave recomendado actualmente. 2048 bits se considera el
+#   mínimo aceptable, pero 4096 bits ofrece un margen de seguridad mayor frente a avances
+#   en algoritmos de factorización. El costo en tiempo de generación es insignificante.
+#
+# ADVERTENCIA PARA PRODUCCIÓN: Terraform almacena la clave privada en texto plano dentro
+# del archivo de estado (.tfstate). Si el estado está en S3, verifica que el bucket tiene
+# cifrado en reposo activado (encrypt = true en el bloque backend de proveedores.tf) y
+# acceso restringido mediante políticas IAM. En entornos reales, lo correcto es generar
+# el par de llaves fuera de Terraform y subir solo la clave pública a AWS.
 resource "tls_private_key" "bootcamp" {
   algorithm = "RSA"
   rsa_bits  = 4096

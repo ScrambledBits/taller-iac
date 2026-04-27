@@ -2,12 +2,22 @@
 ---
 # Playbook principal. Define dos plays independientes: uno para el grupo 'frontend'
 # y otro para 'backend'. Los grupos y sus hosts están definidos en el inventario
-# generado por Terraform (inventario_terraform.yaml).
+# generado automáticamente por Terraform (inventario_terraform.yaml).
 #
-# En cada play, el rol 'comun' se ejecuta primero (actualización del SO) antes del
-# rol específico. El orden de la lista importa: Ansible los ejecuta de arriba a abajo.
+# Flujo completo de datos entre Terraform y Ansible:
+#   1. 'terraform apply' crea las instancias EC2 y obtiene sus IPs reales de AWS.
+#   2. Terraform escribe inventario_terraform.yaml con esas IPs (ver aprovisionamiento.tf).
+#   3. Terraform llama a este playbook pasando app_private_ip=<IP privada del backend>
+#      mediante --extra-vars. Esa variable la usa el rol 'frontend' para configurar
+#      nginx como reverse proxy apuntando a la IP correcta del backend.
+#
+# En cada play, el rol 'comun' se ejecuta primero (actualización del sistema operativo)
+# antes del rol específico. El orden de la lista importa: Ansible los ejecuta de arriba
+# hacia abajo, y 'comun' debe correr antes para garantizar que el SO esté actualizado
+# antes de instalar cualquier paquete adicional.
 #
 # 'become: true' indica que las tareas se ejecutan con privilegios de superusuario (sudo).
+# Es necesario para instalar paquetes, escribir en /etc y gestionar servicios del sistema.
 
 - name: Frontend (Play)
   hosts: frontend

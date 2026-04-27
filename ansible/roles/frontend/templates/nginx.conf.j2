@@ -2,21 +2,31 @@ server {
     listen 80;
     server_name _;
 
-    # Sirve archivos estáticos desde el webroot
+    # Sirve archivos estáticos desde el webroot (HTML, JS, imágenes).
+    # try_files intenta servir el archivo exacto pedido ($uri), luego como directorio
+    # ($uri/), y si ninguno existe devuelve 404.
     location / {
         root  {{ directorio_web }};
         index index.html;
         try_files $uri $uri/ =404;
     }
 
-    # Reverse proxy hacia el backend Flask.
-    # Sin barra al final de proxy_pass: nginx reenvía la URL completa incluyendo el prefijo /api/,
-    # de modo que Flask recibe la ruta tal como la declaró: /api/health, /api/hello, etc.
-    # Con barra final el prefijo se descartaría y Flask no encontraría las rutas.
+    # Reverse proxy hacia el backend Flask en el puerto 5000.
+    # Todas las solicitudes cuya ruta empiece por /api/ se reenvían al backend.
+    # El navegador nunca habla directamente con Flask: nginx actúa como intermediario.
+    #
+    # Sin barra al final en proxy_pass: nginx reenvía la URL COMPLETA incluyendo el
+    # prefijo /api/, de modo que Flask recibe la ruta tal como la declaró en su código:
+    # /api/health, /api/hello, etc.
+    # Con barra final (http://...5000/) nginx descartaría el prefijo /api/ y Flask
+    # recibiría solo /health, /hello — rutas que no existen en la aplicación.
     location /api/ {
         proxy_pass         http://{{ app_private_ip }}:5000;
-        proxy_set_header   Host              $host;
-        proxy_set_header   X-Real-IP         $remote_addr;
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+
+        # Headers que nginx añade antes de reenviar la solicitud al backend.
+        # Sin ellos, Flask solo vería la IP interna del proxy (nginx), no la del cliente real.
+        proxy_set_header   Host              $host;            # dominio original de la solicitud
+        proxy_set_header   X-Real-IP         $remote_addr;     # IP real del cliente (no la de nginx)
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for; # cadena completa si hay varios proxies
     }
 }

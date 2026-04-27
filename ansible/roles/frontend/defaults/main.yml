@@ -7,3 +7,11 @@
 
 directorio_web: /var/www/bootcamperu  # directorio donde nginx sirve los archivos estáticos del sitio
 nombre_sitio:   bootcamperu           # nombre del sitio en sites-available y sites-enabled de nginx
+
+# NOTA: la variable 'app_private_ip' (IP privada del backend) NO se define en este archivo.
+# Se inyecta en tiempo de ejecución por Terraform mediante --extra-vars cuando llama a
+# ansible-playbook desde aprovisionamiento.tf. Es el mecanismo que conecta la capa de
+# infraestructura (Terraform) con la capa de configuración (Ansible): Terraform conoce
+# la IP privada del backend porque la creó, y Ansible la necesita para configurar nginx
+# como reverse proxy apuntando al destino correcto.
+# Ver: terraform/aprovisionamiento.tf → provisioner "local-exec" → --extra-vars

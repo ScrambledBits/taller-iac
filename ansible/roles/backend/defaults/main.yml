@@ -2,6 +2,11 @@
 ---
 # Variables con precedencia baja (defaults). Pueden sobreescribirse desde el playbook,
 # desde group_vars/host_vars, o con --extra-vars, sin necesidad de modificar el rol.
+# La prioridad de variables en Ansible va de menor a mayor:
+#   defaults → vars del rol → group_vars → host_vars → --extra-vars
+#
+# Ejemplo: para cambiar el directorio de la app sin editar este archivo:
+#   ansible-playbook playbook.yaml --extra-vars "directorio_app=/srv/mi-app"
 
 directorio_app:  /opt/webstack-app  # directorio donde se despliega la aplicación Flask
 archivo_app:     app.py             # nombre del archivo principal de la aplicación Python
